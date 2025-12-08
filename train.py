@@ -87,6 +87,17 @@ sched=optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience
 # loss weights
 pde_w, bc_w, data_w = 30.0, 100.0, 1.0
 start=time.time()
+
+# track loss history
+loss_history = {
+    'total': [],
+    'pde': [],
+    'bc': [],
+    'data': [],
+    'val_rmse': [],
+    'val_rel': []
+}
+
 pbar=tqdm(range(6000), desc='Training')
 for epoch in pbar:
     model.train()
@@ -123,8 +134,16 @@ for epoch in pbar:
     opt.step()
     sched.step(loss)
     
+    # record losses every epoch
+    loss_history['total'].append(loss.item())
+    loss_history['pde'].append(loss_pde.item())
+    loss_history['bc'].append(loss_bc.item())
+    loss_history['data'].append(loss_data.item())
+    
     if epoch%200==0:
         val_rmse, val_rms_true, val_rel = compute_val_stats()
+        loss_history['val_rmse'].append(val_rmse)
+        loss_history['val_rel'].append(val_rel)
         pbar.set_postfix({
             'Loss': f"{loss.item():.2e}",
             'PDE': f"{loss_pde.item():.2e}",
@@ -150,6 +169,7 @@ torch.save({
     'hidden_layers':[64,64,64],
     'val_idx':val_idx.cpu(),
     'data_seed':42,
-    'n_data':15000
+    'n_data':15000,
+    'loss_history':loss_history
 }, 'parametric_pinn_model.pt')
 print('Saved model to parametric_pinn_model.pt')
